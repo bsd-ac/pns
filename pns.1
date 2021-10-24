@@ -1,0 +1,153 @@
+.\" Copyright (c) 2021 Aisha Tammy <floss@bsd.ac>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd $Mdocdate: October 24 2021 $
+.Dt PNS 1
+.Os
+.Sh NAME
+.Nm pns
+.Nd run commands in a podman pod or container namespace
+.Sh SYNOPSIS
+.Nm pns
+.Ar name
+.Ar command
+.Op Ar args
+.Sh DESCRIPTION
+The
+.Nm
+command is a utility to run a
+.Ar command
+inside a podman environment,
+.Ar name .
+It supports both pod names and container names.
+.Sh EXAMPLES
+These examples showcase how to create a rootless pod
+.Dq epsilonknot
+by a user
+.Dq epsilon
+, add a wireguard interface and manipulate its firewall.
+.Pp
+Create the rootless container :
+.Bd -literal -offset indent
+@epsilon ~/$ podman pod create --name epsilonknot
+@epsilon ~/$ podman pod start epsilonknot
+.Ed
+.Pp
+Bring up the wireguard interface
+.Dq www
+using
+.Xr wg-quick 8 :
+.Bd -literal -offset indent
+@epsilon ~/$ pns epsilonknot wg-quick up ~/wireguard/www.conf
+[#] ip link add www type wireguard
+[#] wg setconf www /dev/fd/63
+[#] ip -4 address add xx.xx.xx.xx/32 dev www
+[#] ip -6 address add xx:xx:xx:xx::xx/xx dev www
+[#] ip link set mtu 65440 up dev www
+[#] wg set www fwmark 51820
+[#] ip -6 route add ::/0 dev www table 51820
+[#] ip -6 rule add not fwmark 51820 table 51820
+[#] ip -6 rule add table main suppress_prefixlength 0
+[#] nft -f /dev/fd/63
+[#] ip -4 route add 0.0.0.0/0 dev www table 51820
+[#] ip -4 rule add not fwmark 51820 table 51820
+[#] ip -4 rule add table main suppress_prefixlength 0
+[#] sysctl -q net.ipv4.conf.all.src_valid_mark=1
+[#] nft -f /dev/fd/63
+.Ed
+.Pp
+Show the default firewall rules created by
+.Xr wg-quick 8 :
+.Bd -literal -offset indent
+@epsilon ~/$ pns epsilonknot nft list ruleset
+table ip6 wg-quick-www {
+        chain preraw {
+                type filter hook prerouting priority raw; policy accept;
+                iifname != "www" ip6 daddr xx:xx:xx:xx::xx fib saddr type != local drop
+        }
+
+        chain premangle { # handle 2
+                type filter hook prerouting priority mangle; policy accept;
+                meta l4proto udp meta mark set ct mark
+        }
+
+        chain postmangle { # handle 3
+                type filter hook postrouting priority mangle; policy accept;
+                meta l4proto udp meta mark 0x0000ca6c ct mark set meta mark
+        }
+}
+table ip wg-quick-www { # handle 23
+        chain preraw { # handle 1
+                type filter hook prerouting priority raw; policy accept;
+                iifname != "www" ip daddr xx.xx.xx.xx fib saddr type != local drop
+        }
+
+        chain premangle { # handle 2
+                type filter hook prerouting priority mangle; policy accept;
+                meta l4proto udp meta mark set ct mark
+        }
+
+        chain postmangle { # handle 3
+                type filter hook postrouting priority mangle; policy accept;
+                meta l4proto udp meta mark 0x0000ca6c ct mark set meta mark
+        }
+}
+.Ed
+.Pp
+Now add a new inet table with a chain and rules to disallow all ports
+except 80 and 443 :
+.Bd -literal -offset indent
+@epsilon ~/$ pns epsilonknot nft add table inet wgq-www
+@epsilon ~/$ pns epsilonknot nft add chain inet wgq-www preraw '{ type filter hook prerouting priority raw; policy accept; }'
+@epsilon ~/$ pns epsilonknot nft add rule inet wgq-www preraw 'tcp dport != { 80, 443 } drop'
+@epsilon ~/$ pns epsilonknot nft list ruleset
+table ip6 wg-quick-www { # handle 22
+        chain preraw { # handle 1
+                type filter hook prerouting priority raw; policy accept;
+                iifname != "www" ip6 daddr xx:xx:xx:xx::xx fib saddr type != local drop
+        }
+
+        chain premangle { # handle 2
+                type filter hook prerouting priority mangle; policy accept;
+                meta l4proto udp meta mark set ct mark
+        }
+
+        chain postmangle { # handle 3
+                type filter hook postrouting priority mangle; policy accept;
+                meta l4proto udp meta mark 0x0000ca6c ct mark set meta mark
+        }
+}
+table ip wg-quick-www { # handle 23
+        chain preraw { # handle 1
+                type filter hook prerouting priority raw; policy accept;
+                iifname != "www" ip daddr xx.xx.xx.xx fib saddr type != local drop
+        }
+
+        chain premangle { # handle 2
+                type filter hook prerouting priority mangle; policy accept;
+                meta l4proto udp meta mark set ct mark
+        }
+
+        chain postmangle { # handle 3
+                type filter hook postrouting priority mangle; policy accept;
+                meta l4proto udp meta mark 0x0000ca6c ct mark set meta mark
+        }
+}
+table inet wgq-www { # handle 24
+        chain preraw { # handle 1
+                type filter hook prerouting priority raw; policy accept;
+                tcp dport != { 80, 443 } drop
+        }
+}
+.Ed
