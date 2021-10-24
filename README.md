@@ -68,28 +68,28 @@ Show the default firewall rules created by
 	                iifname != "www" ip6 daddr xx:xx:xx:xx::xx fib saddr type != local drop
 	        }
 	
-	        chain premangle { # handle 2
+	        chain premangle {
 	                type filter hook prerouting priority mangle; policy accept;
 	                meta l4proto udp meta mark set ct mark
 	        }
 	
-	        chain postmangle { # handle 3
+	        chain postmangle {
 	                type filter hook postrouting priority mangle; policy accept;
 	                meta l4proto udp meta mark 0x0000ca6c ct mark set meta mark
 	        }
 	}
-	table ip wg-quick-www { # handle 23
-	        chain preraw { # handle 1
+	table ip wg-quick-www {
+	        chain preraw {
 	                type filter hook prerouting priority raw; policy accept;
 	                iifname != "www" ip daddr xx.xx.xx.xx fib saddr type != local drop
 	        }
 	
-	        chain premangle { # handle 2
+	        chain premangle {
 	                type filter hook prerouting priority mangle; policy accept;
 	                meta l4proto udp meta mark set ct mark
 	        }
 	
-	        chain postmangle { # handle 3
+	        chain postmangle {
 	                type filter hook postrouting priority mangle; policy accept;
 	                meta l4proto udp meta mark 0x0000ca6c ct mark set meta mark
 	        }
@@ -102,40 +102,40 @@ except 80 and 443 :
 	@epsilon ~/$ pns epsilonknot nft add chain inet wgq-www preraw '{ type filter hook prerouting priority raw; policy accept; }'
 	@epsilon ~/$ pns epsilonknot nft add rule inet wgq-www preraw 'tcp dport != { 80, 443 } drop'
 	@epsilon ~/$ pns epsilonknot nft list ruleset
-	table ip6 wg-quick-www { # handle 22
-	        chain preraw { # handle 1
+	table ip6 wg-quick-www {
+	        chain preraw {
 	                type filter hook prerouting priority raw; policy accept;
 	                iifname != "www" ip6 daddr xx:xx:xx:xx::xx fib saddr type != local drop
 	        }
 	
-	        chain premangle { # handle 2
+	        chain premangle {
 	                type filter hook prerouting priority mangle; policy accept;
 	                meta l4proto udp meta mark set ct mark
 	        }
 	
-	        chain postmangle { # handle 3
+	        chain postmangle {
 	                type filter hook postrouting priority mangle; policy accept;
 	                meta l4proto udp meta mark 0x0000ca6c ct mark set meta mark
 	        }
 	}
-	table ip wg-quick-www { # handle 23
-	        chain preraw { # handle 1
+	table ip wg-quick-www {
+	        chain preraw {
 	                type filter hook prerouting priority raw; policy accept;
 	                iifname != "www" ip daddr xx.xx.xx.xx fib saddr type != local drop
 	        }
 	
-	        chain premangle { # handle 2
+	        chain premangle {
 	                type filter hook prerouting priority mangle; policy accept;
 	                meta l4proto udp meta mark set ct mark
 	        }
 	
-	        chain postmangle { # handle 3
+	        chain postmangle {
 	                type filter hook postrouting priority mangle; policy accept;
 	                meta l4proto udp meta mark 0x0000ca6c ct mark set meta mark
 	        }
 	}
-	table inet wgq-www { # handle 24
-	        chain preraw { # handle 1
+	table inet wgq-www {
+	        chain preraw {
 	                type filter hook prerouting priority raw; policy accept;
 	                tcp dport != { 80, 443 } drop
 	        }
