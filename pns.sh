@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 die() { echo "$*" 1>&2 ; exit 1; }
 
