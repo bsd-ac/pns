@@ -3,7 +3,7 @@
 die() { echo "$*" 1>&2 ; exit 1; }
 
 if [ $# -lt 2 ]; then
-	die "usage: $0 [pod/container name] [command]"
+	die "usage: $(basename $0) [pod/container name] [command]"
 fi
 	
 _name="$1"
