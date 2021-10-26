@@ -33,7 +33,7 @@ by a user
 
 Create the rootless container :
 
-	@epsilon ~/$ podman pod create --name epsilonknot
+	@epsilon ~/$ podman pod create --name epsilonknot --dns 8.8.8.8
 	@epsilon ~/$ podman pod start epsilonknot
 
 Bring up the wireguard interface
@@ -44,7 +44,7 @@ using
 	@epsilon ~/$ pns epsilonknot wg-quick up ~/wireguard/www.conf
 	[#] ip link add www type wireguard
 	[#] wg setconf www /dev/fd/63
-	[#] ip -4 address add xx.xx.xx.xx/32 dev www
+	[#] ip -4 address add xx.xx.xx.xx/xx dev www
 	[#] ip -6 address add xx:xx:xx:xx::xx/xx dev www
 	[#] ip link set mtu 65440 up dev www
 	[#] wg set www fwmark 51820
